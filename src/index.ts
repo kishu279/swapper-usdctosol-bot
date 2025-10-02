@@ -16,15 +16,17 @@ const bot = new Telegraf(BOT_TOKEN!);
 type user_subscription = {
   name: string;
   subscription: {
-    usdc_rate: number;
-    sol_rate: number;
+    quantity?: number;
+    sol_rate_usdc: number;
     subscribed: boolean;
   }[];
 };
 
 const user = new Map<number, user_subscription>();
-
 console.debug("📊 User data store initialized");
+
+const sol_mint_address = "So11111111111111111111111111111111111111112";
+const usdc_mint_address = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 function main() {
   console.debug("🎯 Setting up bot commands...");
@@ -82,29 +84,27 @@ function main() {
       console.debug("❌ Insufficient arguments for subscribe", {
         argsCount: args.length,
       });
-      await ctx.reply("Usage: /subscribe <usdc_rate> <sol_rate>");
+      await ctx.reply("Usage: /subscribe <quantity> <sol_rate_usdc>");
       return;
     }
 
-    const usdc_rate = parseFloat(args.at(1)!);
-    const sol_rate = parseFloat(args.at(2)!);
+    const quantity = parseFloat(args.at(1)!) || 1;
+    const sol_rate_usdc = parseFloat(args.at(2)!);
 
     console.debug("🔢 Parsing rates", {
-      usdc_rate_raw: args.at(1),
       sol_rate_raw: args.at(2),
-      usdc_rate_parsed: usdc_rate,
-      sol_rate_parsed: sol_rate,
+      sol_rate_parsed: sol_rate_usdc,
     });
 
-    if (isNaN(usdc_rate) || isNaN(sol_rate)) {
-      console.debug("❌ Invalid rates provided", { usdc_rate, sol_rate });
+    if (isNaN(sol_rate_usdc)) {
+      console.debug("❌ Invalid rates provided", { sol_rate_usdc });
       await ctx.reply("Invalid rates. Please enter valid numbers.");
       return;
     }
 
     const newSubscription = {
-      usdc_rate: usdc_rate,
-      sol_rate: sol_rate,
+      quantity: quantity,
+      sol_rate_usdc: sol_rate_usdc,
       subscribed: true,
     };
 
@@ -142,7 +142,7 @@ function main() {
     });
 
     const reply = subscriptions.map((s) => {
-      return `* ${s.usdc_rate} USDC -> ${s.sol_rate} SOL`;
+      return `* ${s.usdc_rate} USDC -> ${s.sol_rate_usdc} SOL`;
     });
 
     console.debug("💬 Sending subscriptions reply", {
@@ -163,7 +163,7 @@ function main() {
     });
 
     await ctx.reply(
-      "Commands:\n/start - Start the bot\n/subscribe <usdc_rate> <sol_rate> - Subscribe to a rate\n/subscriptions - List your subscriptions\n/help - Show this help message"
+      "Commands:\n/start - Start the bot\n/subscribe <usdc_rate> <sol_rate_usdc> - Subscribe to a rate\n/subscriptions - List your subscriptions\n/help - Show this help message"
     );
 
     console.debug("💬 Help message sent", { userId });
