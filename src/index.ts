@@ -1,4 +1,5 @@
 import { Telegraf } from "telegraf";
+import { getSwapQuoteValue } from "./swap";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -24,6 +25,9 @@ type user_subscription = {
 
 const user = new Map<number, user_subscription>();
 console.debug("📊 User data store initialized");
+
+const priceToUser = new Map<number, Set<number>>();
+console.debug("📊 Price to User data store initialized");
 
 const sol_mint_address = "So11111111111111111111111111111111111111112";
 const usdc_mint_address = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -117,6 +121,14 @@ function main() {
       totalSubscriptions: userSubscriptions.length,
     });
 
+    const userPrices = sol_rate_usdc.toFixed(2) as unknown as number;
+
+    if (priceToUser.has(userPrices)) {
+      priceToUser.get(userPrices)?.add(userId);
+    } else {
+      priceToUser.set(userPrices, new Set([userId]));
+    }
+
     await ctx.reply("Subscribed successfully!");
   });
 
@@ -142,7 +154,7 @@ function main() {
     });
 
     const reply = subscriptions.map((s) => {
-      return `* ${s.usdc_rate} USDC -> ${s.sol_rate_usdc} SOL`;
+      return `* 1 USDC -> ${s.sol_rate_usdc} SOL`;
     });
 
     console.debug("💬 Sending subscriptions reply", {
@@ -185,6 +197,8 @@ function main() {
   console.debug("🚀 Launching bot...");
   bot.launch();
 
+  swapChecker();
+
   // Graceful shutdown
   process.once("SIGINT", () => {
     console.debug("🛑 SIGINT received, shutting down gracefully...");
@@ -195,6 +209,60 @@ function main() {
     console.debug("🛑 SIGTERM received, shutting down gracefully...");
     bot.stop("SIGTERM");
   });
+}
+
+async function swapChecker() {
+  // poll the data every 5 seconds
+  // check the response against all user subscriptions
+  // send the message if the rate is met
+
+  const goal_sol_rate = 233.1923; // the user wants to buy sol at this rate
+
+  setInterval(async () => {
+    // poll the data every 5 seconds
+    const response = await getSwapQuoteValue(
+      1 * 10 ** 6,
+      usdc_mint_address,
+      sol_mint_address
+    );
+
+    if (response) {
+      // convert the sol lamports to sol
+      const current_sol_rate = 1 / response;
+      console.debug("🔄 GOAL SOL rate:", goal_sol_rate);
+      console.debug("🔄 Current SOL rate:", current_sol_rate.toFixed(2));
+      // console.debug("🔄 Current response:", current_sol_rate.toFixed(2));
+
+      // get the user ids that subscribed to this rate
+      if (priceToUser.has(current_sol_rate.toFixed(2) as unknown as number)) {
+        const userIds = priceToUser.get(
+          current_sol_rate.toFixed(2) as unknown as number
+        );
+        console.debug("👥 Notifying users:", userIds);
+      } else {
+        console.log("👥 No users to notify for this rate");
+      }
+
+      // const userIds = priceToUser.get(current_sol_rate);
+
+      // if the current rate is less than the goal rate then send a message
+      // if (current_sol_rate <= goal_sol_rate) {
+      //   console.log(
+      //     `🎉 Goal met! ${goal_sol_rate} USDC can be swapped for`,
+      //     response,
+      //     "SOL"
+      //   );
+      // }
+
+      // if (current_sol_rate <= goal_sol_rate) {
+      //   console.log(
+      //     `🎉 Goal met! ${goal_sol_rate} USDC can be swapped for`,
+      //     current_sol_rate,
+      //     "SOL"
+      //   );
+      // }
+    }
+  }, 5000);
 }
 
 main();
