@@ -46,7 +46,7 @@ function main() {
       username: ctx.message.from.username,
     });
 
-    await ctx.reply("Hello there!");
+    await ctx.reply("🚀 Welcome to SwapBot! Ready to track those rates?");
 
     if (!user.has(userId)) {
       user.set(userId, {
@@ -74,7 +74,7 @@ function main() {
 
     if (!user.has(userId)) {
       console.debug("❌ User not found, need to /start first", { userId });
-      await ctx.reply("Please use /start command first");
+      await ctx.reply("⚠️ Hit /start first!");
       return;
     }
 
@@ -88,7 +88,7 @@ function main() {
       console.debug("❌ Insufficient arguments for subscribe", {
         argsCount: args.length,
       });
-      await ctx.reply("Usage: /subscribe <quantity> <sol_rate_usdc>");
+      await ctx.reply("📝 Use: /subscribe <quantity> <sol_rate>");
       return;
     }
 
@@ -102,7 +102,7 @@ function main() {
 
     if (isNaN(sol_rate_usdc)) {
       console.debug("❌ Invalid rates provided", { sol_rate_usdc });
-      await ctx.reply("Invalid rates. Please enter valid numbers.");
+      await ctx.reply("❌ Invalid numbers, try again!");
       return;
     }
 
@@ -121,7 +121,7 @@ function main() {
       totalSubscriptions: userSubscriptions.length,
     });
 
-    const userPrices = sol_rate_usdc.toFixed(4) as unknown as number;
+    const userPrices = sol_rate_usdc.toFixed(2) as unknown as number;
 
     if (priceToUser.has(userPrices)) {
       priceToUser.get(userPrices)?.add(userId);
@@ -129,7 +129,7 @@ function main() {
       priceToUser.set(userPrices, new Set([userId]));
     }
 
-    await ctx.reply("Subscribed successfully!");
+    await ctx.reply("✅ You're in! Rate locked 🔒");
   });
 
   bot.command("subscriptions", async (ctx) => {
@@ -142,7 +142,7 @@ function main() {
 
     if (!user.has(userId)) {
       console.debug("❌ User not found for subscriptions", { userId });
-      await ctx.reply("Please use /start command first");
+      await ctx.reply("⚠️ Hit /start first!");
       return;
     }
 
@@ -154,7 +154,7 @@ function main() {
     });
 
     const reply = subscriptions.map((s) => {
-      return `* 1 USDC -> ${s.sol_rate_usdc} SOL`;
+      return `🎯 1 USDC → ${s.sol_rate_usdc} SOL`;
     });
 
     console.debug("💬 Sending subscriptions reply", {
@@ -175,7 +175,7 @@ function main() {
     });
 
     await ctx.reply(
-      "Commands:\n/start - Start the bot\n/subscribe <usdc_rate> <sol_rate_usdc> - Subscribe to a rate\n/subscriptions - List your subscriptions\n/help - Show this help message"
+      "🔥 Commands:\n/start - Join the party\n/subscribe <qty> <rate> - Lock in rates\n/subscriptions - Your watchlist\n/help - This menu"
     );
 
     console.debug("💬 Help message sent", { userId });
@@ -230,13 +230,12 @@ async function swapChecker() {
       // convert the sol lamports to sol
       const current_sol_rate = 1 / response;
       console.debug("🔄 GOAL SOL rate:", goal_sol_rate);
-      console.debug("🔄 Current SOL rate:", current_sol_rate.toFixed(4));
-      // console.debug("🔄 Current response:", current_sol_rate.toFixed(4));
+      console.debug("🔄 Current SOL rate:", current_sol_rate.toFixed(2));
 
       // get the user ids that subscribed to this rate
-      if (priceToUser.has(current_sol_rate.toFixed(4) as unknown as number)) {
+      if (priceToUser.has(current_sol_rate.toFixed(2) as unknown as number)) {
         const userIds = priceToUser.get(
-          current_sol_rate.toFixed(4) as unknown as number
+          current_sol_rate.toFixed(2) as unknown as number
         );
         console.debug("👥 Notifying users:", userIds);
 
@@ -244,31 +243,13 @@ async function swapChecker() {
         for (const userId of userIds!) {
           await bot.telegram.sendMessage(
             userId,
-            `🎉 Goal met! ${goal_sol_rate} USDC can be swapped for ${response} SOL`
+            `🔥 BINGO! Your rate hit: ${current_sol_rate.toFixed(2              
+            )} USDC per SOL! 💰`
           );
         }
       } else {
         console.log("👥 No users to notify for this rate");
       }
-
-      // const userIds = priceToUser.get(current_sol_rate);
-
-      // if the current rate is less than the goal rate then send a message
-      // if (current_sol_rate <= goal_sol_rate) {
-      //   console.log(
-      //     `🎉 Goal met! ${goal_sol_rate} USDC can be swapped for`,
-      //     response,
-      //     "SOL"
-      //   );
-      // }
-
-      // if (current_sol_rate <= goal_sol_rate) {
-      //   console.log(
-      //     `🎉 Goal met! ${goal_sol_rate} USDC can be swapped for`,
-      //     current_sol_rate,
-      //     "SOL"
-      //   );
-      // }
     }
   }, 5000);
 }
