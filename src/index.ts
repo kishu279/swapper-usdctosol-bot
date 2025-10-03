@@ -121,7 +121,7 @@ function main() {
       totalSubscriptions: userSubscriptions.length,
     });
 
-    const userPrices = sol_rate_usdc.toFixed(2) as unknown as number;
+    const userPrices = sol_rate_usdc.toFixed(4) as unknown as number;
 
     if (priceToUser.has(userPrices)) {
       priceToUser.get(userPrices)?.add(userId);
@@ -230,15 +230,23 @@ async function swapChecker() {
       // convert the sol lamports to sol
       const current_sol_rate = 1 / response;
       console.debug("🔄 GOAL SOL rate:", goal_sol_rate);
-      console.debug("🔄 Current SOL rate:", current_sol_rate.toFixed(2));
-      // console.debug("🔄 Current response:", current_sol_rate.toFixed(2));
+      console.debug("🔄 Current SOL rate:", current_sol_rate.toFixed(4));
+      // console.debug("🔄 Current response:", current_sol_rate.toFixed(4));
 
       // get the user ids that subscribed to this rate
-      if (priceToUser.has(current_sol_rate.toFixed(2) as unknown as number)) {
+      if (priceToUser.has(current_sol_rate.toFixed(4) as unknown as number)) {
         const userIds = priceToUser.get(
-          current_sol_rate.toFixed(2) as unknown as number
+          current_sol_rate.toFixed(4) as unknown as number
         );
         console.debug("👥 Notifying users:", userIds);
+
+        // iterating through the user ids
+        for (const userId of userIds!) {
+          await bot.telegram.sendMessage(
+            userId,
+            `🎉 Goal met! ${goal_sol_rate} USDC can be swapped for ${response} SOL`
+          );
+        }
       } else {
         console.log("👥 No users to notify for this rate");
       }
